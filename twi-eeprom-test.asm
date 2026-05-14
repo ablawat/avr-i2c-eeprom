@@ -1,7 +1,9 @@
-                .INCLUDE "clkctrl/include/clkctrl.inc"
-                .INCLUDE "portmux/include/portmux.inc"
-                .INCLUDE "usart/include/usart0.inc"
-                .INCLUDE "twi/include/twi0.inc"
+                .INCLUDE "peripheral/clkctrl/include/clkctrl.inc"
+                .INCLUDE "peripheral/port/include/porta.inc"
+                .INCLUDE "peripheral/port/include/portb.inc"
+                .INCLUDE "peripheral/portmux/include/portmux.inc"
+                .INCLUDE "peripheral/usart/include/usart0.inc"
+                .INCLUDE "peripheral/twi/include/twi0.inc"
 
                 .INCLUDE "24lc024h/include/24lc024h.inc"
 
@@ -16,22 +18,28 @@ buffer:         .BYTE   BUFFER_SIZE
 
                 .CSEG
 
+                ; initialize clock controller
                 rcall   clkctrl_init
+
+                ; initialize PORT multiplexer
                 rcall   portmux_init
 
+                ; initialize PORTA and PORTB
                 ldi     ARG1, 0
                 rcall   port_init
                 ldi     ARG1, 1
                 rcall   port_init
 
+                ; initialize and enable USART0
                 clr     ARG1
                 rcall   usart_init
                 rcall   usart_enable
 
+                ; initialize and enable TWI0
                 rcall   twi0_init
                 rcall   twi0_enable
 
-                ; initialize array
+                ; initialize string
                 ldi     r16, 0xAA
                 sts     string + 0, r16
                 ldi     r16, 0xAA
@@ -69,8 +77,9 @@ loop:           ; load pointer of command buffer
                 ldi     XH, HIGH (buffer)
                 ldi     XL, LOW  (buffer)
 
-                clr     ARG1
-                ldi     ARG2, BUFFER_SIZE
+                ; setup input channel
+                clr     ARG1                ; use USART0
+                ldi     ARG2, BUFFER_SIZE   ; get command size
 
                 ; receive input command
                 rcall   usart_read
@@ -79,16 +88,18 @@ loop:           ; load pointer of command buffer
                 ldi     XH, HIGH (buffer)
                 ldi     XL, LOW  (buffer)
 
-                ; decode command
+                ; decode received command
                 ld      TEMPL, X+           ; get command type
                 ld      BUFFL, X+           ; get word address
                 ld      BUFFH, X+           ; get length
 
-                cpi     TEMPL, 0xA5
-                breq    read
-                
-                cpi     TEMPL, 0x3C
-                breq    write
+                ; check for read command
+                cpi     TEMPL, 0xA5         ; check command value
+                breq    read                ; handle read
+
+                ; check for write command
+                cpi     TEMPL, 0x3C         ; check command value
+                breq    write               ; handle write
 
                 rjmp    loop
 
@@ -96,6 +107,7 @@ read:           ; load pointer of data buffer
                 ldi     XH, HIGH (string)
                 ldi     XL, LOW  (string)
 
+                ; restore length and word address
                 mov     ARG1, BUFFH
                 mov     ARG2, BUFFL
 
@@ -106,6 +118,7 @@ read:           ; load pointer of data buffer
                 ldi     XH, HIGH (string)
                 ldi     XL, LOW  (string)
 
+                ; setup output channel
                 clr     ARG1
                 mov     ARG2, BUFFH
 
@@ -118,6 +131,7 @@ write:          ; load pointer of data buffer
                 ldi     XH, HIGH (string)
                 ldi     XL, LOW  (string)
 
+                ; setup input channel
                 clr     ARG1
                 mov     ARG2, BUFFH
 
@@ -128,6 +142,7 @@ write:          ; load pointer of data buffer
                 ldi     XH, HIGH (string)
                 ldi     XL, LOW  (string)
 
+                ; restore length and word address
                 mov     ARG1, BUFFH
                 mov     ARG2, BUFFL
 
@@ -138,6 +153,7 @@ write:          ; load pointer of data buffer
                 ldi     XH, HIGH (string)
                 ldi     XL, LOW  (string)
 
+                ; setup output channel
                 clr     ARG1
                 ldi     ARG2, 1
 
@@ -146,10 +162,10 @@ write:          ; load pointer of data buffer
 
                 rjmp    loop
 
-                .INCLUDE "clkctrl/source/clkctrl.asm"
-                .INCLUDE "port/port.asm"
-                .INCLUDE "portmux/source/portmux.asm"
-                .INCLUDE "usart/source/usart.asm"
-                .INCLUDE "twi/source/twi0.asm"
+                .INCLUDE "peripheral/clkctrl/source/clkctrl.asm"
+                .INCLUDE "peripheral/port/source/port.asm"
+                .INCLUDE "peripheral/portmux/source/portmux.asm"
+                .INCLUDE "peripheral/usart/source/usart.asm"
+                .INCLUDE "peripheral/twi/source/twi0.asm"
                 .INCLUDE "utils/memory.asm"
                 .INCLUDE "24lc024h/source/24lc024h.asm"
